@@ -132,7 +132,7 @@ public class golfScript : MonoBehaviour {
     {
       Arrow.AddInteractionPunch();
       Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress,Arrow.transform);
-          if (Arrow == Arrowbuttons[0])
+          if (Arrow == Arrowbuttons[1])
             {
               if (CurrentHole != 1)
               {
