@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using KModkit;
 
@@ -177,56 +178,52 @@ public class golfScript : MonoBehaviour {
     }
 
     #pragma warning disable 414
-    private readonly string TwitchHelpMessage = @"Use !{0} cycle to cycle between all of the holes. Use !{0} submit ## to submit a number.";
+    private readonly string TwitchHelpMessage = @"Use '!{0} cycle' to cycle between all of the holes. Use '!{0} submit ##' to submit a number.";
     #pragma warning restore 414
 
     IEnumerator ProcessTwitchCommand(string Command)
     {
-      Command = Command.Trim();
-      string[] Parameters = Command.Split(' ');
-      if (Command.ToString().ToUpper() == "CYCLE")
+      Match mt;
+
+      Command = Command.Trim().ToLowerInvariant();
+      if (Regex.IsMatch(Command, @"^cycle ?(?:holes?)?$"))
       {
         yield return null;
-        for (int i = 0; i < 9; i++)
+
+        // In case for whatever reason it's not at hole 1 already, put back to 1.
+        while (CurrentHole != 1)
+          yield return new KMSelectable[] { Arrowbuttons[1] };
+
+        while (CurrentHole != 9)
         {
-          Arrowbuttons[1].OnInteract();
-          yield return new WaitForSeconds(1.5f);
+          yield return "trywaitcancel 1.5 the cycle was aborted due to a request to cancel.";
+          yield return new KMSelectable[] { Arrowbuttons[0] };
         }
-        yield return new WaitForSeconds(1.5f);
-        for (int i = 0; i < 9; i++)
-        {
-          Arrowbuttons[0].OnInteract();
-          yield return new WaitForSeconds(.5f);
-        }
-        yield break;
+        yield return "trywaitcancel 2.5 the cycle was aborted due to a request to cancel.";
+        while (CurrentHole != 1)
+          yield return new KMSelectable[] { Arrowbuttons[1] };
       }
-      else if (Parameters[0].ToString().ToUpper() != "SUBMIT" || Parameters.Length != 2)
+      else if ((mt = Regex.Match(Command, @"^submit ([0-9]+)$")).Success)
       {
+        string answer = mt.Groups[1].ToString();
+        if (answer.Length >= 8)
+          yield return "sendtochaterror!h That number is far, far too big!";
+
         yield return null;
-        yield return "sendtochaterror Invalid command!";
+        yield return answer.Select(x => KeypadButtons[x - '0']).ToArray();
+        yield return new KMSelectable[] { SubmitButton };
+      }
+    }
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+      if (moduleSolved)
         yield break;
-      }
-      else if (Parameters[1].Length >= 8)
+
+      foreach (char c in Total.ToString())
       {
-        yield return null;
-        yield return "sendtochaterror Too big of a number!";
-        yield break;
-      }
-      for (int i = 0; i < Parameters.Length; i++)
-      {
-        if (Parameters[1][i].ToString() != "1" && Parameters[1][i].ToString() != "2" && Parameters[1][i].ToString() != "3" && Parameters[1][i].ToString() != "4"
-        && Parameters[1][i].ToString() != "5" && Parameters[1][i].ToString() != "6" && Parameters[1][i].ToString() != "7" && Parameters[1][i].ToString() != "8"
-        && Parameters[1][i].ToString() != "9" && Parameters[1][i].ToString() != "0")
-        {
-          yield return null;
-          yield return "sendtochaterror Invalid command!";
-          yield break;
-        }
-      }
-      for (int i = 0; i < Parameters[1].Length; i++)
-      {
-        KeypadButtons[int.Parse(Parameters[1][i].ToString())].OnInteract();
-        yield return new WaitForSeconds(.1f);
+        KeypadButtons[c - '0'].OnInteract();
+        yield return new WaitForSeconds(0.1f);
       }
       SubmitButton.OnInteract();
     }
